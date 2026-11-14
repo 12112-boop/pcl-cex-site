@@ -332,6 +332,13 @@ const chars  = [];   // individual characters
 function hide(el){ el.style.opacity = '0'; el.style.transition = 'opacity .3s ease'; }
 function show(el){ el.style.opacity = '1'; }
 
+// Decorative sub-elements (icons, tags) are not marquee-drawn individually;
+// they simply fade in when their parent card/shot is framed. Removing them
+// from data-build prevents the "double marquee" on nested boxes.
+document.querySelectorAll('[data-build="chip"], [data-build="tag"]').forEach(el => {
+  el.removeAttribute('data-build');
+});
+
 document.querySelectorAll('[data-frame]').forEach(el => {
   const kind = el.getAttribute('data-frame');
   const text = el.textContent;
@@ -665,11 +672,18 @@ function assign(){
 
   const open = visibleDraws().filter(it => !it.claimed);
 
-  // lines that still need typing, visible on screen, and not already owned
+  // lines that still need typing, visible on screen, not already owned,
+  // AND whose containing box (gate) is already done — no typing before the frame
   const openLines = lines.filter(L => {
     if(L.done || L.owner) return false;
     const next = nextCharOf(L);
     if(!next) return false;
+    // gate: the text's outer box must be framed before we type inside it
+    const f = next.frame;
+    if(f.gate){
+      const g = drawByEl.get(f.gate);
+      if(g && !g.done) return false;
+    }
     const r = next.span.getBoundingClientRect();
     return onScreen(r);
   });
