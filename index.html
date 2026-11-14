@@ -22,17 +22,17 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);overflow-x:h
 .swarm-badge{position:absolute;transform:translateX(-50%);padding:1px 5px;border-radius:3px;
   color:#fff;font:600 10px/14px var(--font);white-space:nowrap;pointer-events:none;opacity:.9}
 
-/* ── build marks: outline being dragged, handles, size label ── */
+/* ── marquee chrome ── */
 .build-outline{position:absolute;border:1.5px solid var(--accent);border-radius:2px;
-  pointer-events:none;transition:opacity .35s ease;box-shadow:0 0 0 1px rgba(79,140,252,.18)}
+  pointer-events:none;box-shadow:0 0 0 1px rgba(79,140,252,.18)}
 .build-handle{position:absolute;width:7px;height:7px;background:#fff;border:1.5px solid var(--accent);
-  border-radius:1px;pointer-events:none;transition:opacity .35s ease}
+  border-radius:1px;pointer-events:none}
 .build-dim{position:absolute;padding:2px 6px;border-radius:3px;background:var(--accent);color:#fff;
   font:600 10px/13px var(--font);white-space:nowrap;pointer-events:none;
-  font-variant-numeric:tabular-nums;transition:opacity .35s ease}
+  font-variant-numeric:tabular-nums}
 .build-dim.ai{background:var(--accent2)}
 
-/* ── just-drawn box: brief outline flash as it fills in ── */
+/* ── just-drawn box: outline flash as it fills ── */
 .just-built{position:relative}
 .just-built::after{content:'';position:absolute;inset:-1.5px;border:1.5px solid var(--accent);
   border-radius:inherit;pointer-events:none;animation:fillflash .7s cubic-bezier(.2,.75,.2,1) forwards}
@@ -132,7 +132,7 @@ footer{padding:40px;text-align:center;color:var(--muted);font-size:13px;border-t
 #swarm-hud .dots{display:flex;padding-left:5px}
 #swarm-hud .dots i{display:block;width:16px;height:16px;margin-left:-4px;border-radius:50%;
   border:2px solid #0f1116;font:700 8px/12px var(--font);font-style:normal;text-align:center;color:#fff}
-#swarm-hud .status{color:#ccc;font-variant-numeric:tabular-nums;min-width:150px}
+#swarm-hud .status{color:#ccc;font-variant-numeric:tabular-nums;min-width:168px}
 #swarm-hud .bar{width:56px;height:3px;border-radius:2px;background:#2a2f3d;overflow:hidden}
 #swarm-hud .bar i{display:block;height:100%;width:0;background:var(--accent);transition:width .35s ease}
 
@@ -296,7 +296,8 @@ const ARROW_D = "M4.6 3.9 C4.2 3.1 4.9 2.4 5.7 2.8 L20.6 9.4 C21.5 9.8 21.4 11.1
 const CROSS_D = "M12 3.5 V20.5 M3.5 12 H20.5";
 const HOT = { arrow:[5,3.5], cross:[12,12], ibeam:[12,12] };
 
-const MIN_AGENTS = 10, MAX_AGENTS = 24;
+const MIN_AGENTS = 4;      // agents present while there is visible work
+const MAX_AGENTS = 22;
 const rand = (a,b) => a + Math.random()*(b-a);
 const clamp = (v,a,b) => Math.max(a,Math.min(b,v));
 
@@ -323,22 +324,14 @@ const hudDots   = document.getElementById('hud-dots');
 const hudStatus = document.getElementById('hud-status');
 const hudBar    = document.getElementById('hud-bar');
 
-/* ═══════════════ blank the page, collect build items ═══════════════ */
-const draws = [];   // marquee-drawn boxes: cards, chips, tags, images
-const frames = [];  // text blocks (typed, never boxed)
-const chars = [];   // individual characters
+/* ═══════════════ page model ═══════════════ */
+const draws  = [];   // boxes drawn with a marquee
+const frames = [];   // text blocks
+const chars  = [];   // individual characters
 
-function hide(el){
-  el.style.opacity = '0';
-  el.style.transition = 'opacity .3s ease';
-}
-function show(el){
-  el.style.opacity = '1';
-}
+function hide(el){ el.style.opacity = '0'; el.style.transition = 'opacity .3s ease'; }
+function show(el){ el.style.opacity = '1'; }
 
-// Text blocks: characters start hidden (each span is opacity:0) and are revealed
-// as they are typed. The container itself is never faded, otherwise a parent
-// opacity:0 would keep finished characters invisible.
 document.querySelectorAll('[data-frame]').forEach(el => {
   const kind = el.getAttribute('data-frame');
   const text = el.textContent;
@@ -353,7 +346,7 @@ document.querySelectorAll('[data-frame]').forEach(el => {
     list.push(rec);
     chars.push(rec);
   }
-  const item = { kind: kind === 'pill' ? 'pill' : 'text', el, chars:list, gate:null, done:false, typed:0 };
+  const item = { kind: kind === 'pill' ? 'pill' : 'text', el, chars:list, gate:null, done:false };
   let p = el.parentElement;
   while(p && !item.gate){
     if(p.hasAttribute && p.hasAttribute('data-build')) item.gate = p;
@@ -363,11 +356,10 @@ document.querySelectorAll('[data-frame]').forEach(el => {
   frames.push(item);
 });
 
-// Boxes: marquee outline → fill → (images) clip-path reveal
 document.querySelectorAll('[data-build]').forEach(el => {
   hide(el);
   const kind = el.getAttribute('data-build');
-  const item = { kind, el, done:false, claimed:null, outline:null,
+  const item = { kind, el, done:false, claimed:null, outline:null, handles:null, dim:null,
                  state:'wait', p:0, dur:0, rect:null,
                  img: kind === 'image' ? el.querySelector('img') : null };
   if(item.img){
@@ -380,59 +372,58 @@ document.querySelectorAll('[data-build]').forEach(el => {
 const totalUnits = draws.length + chars.length;
 let doneUnits = 0;
 
-/* order draws by document position so the page builds top → bottom */
-function docOrder(){
-  for(const it of draws){
-    if(it.done) continue;
-    const r = it.el.getBoundingClientRect();
-    it.docY = r.top + scrollY;
-    it.docX = r.left + scrollX;
-  }
+/* ═══════════════ viewport gate — only what is on screen gets built ═══════════════ */
+// A single, strict test: the element must overlap the visible viewport.
+// Nothing above/below the fold is ever started, so scrolling is what feeds work.
+function onScreen(r){
+  return r.width > 1 && r.height > 1 && r.bottom > 0 && r.top < innerHeight;
 }
-docOrder();
+function drawVisible(it){
+  if(it.done) return false;
+  return onScreen(it.el.getBoundingClientRect());
+}
 
-/* ═══════════════ availability (scroll-driven frontier) ═══════════════ */
-function inView(it){
-  const r = it.el.getBoundingClientRect();
-  return r.bottom > -60 && r.top < innerHeight + 140 && r.width > 1 && r.height > 1;
-}
+let drawByEl = new Map();
+draws.forEach(d => drawByEl.set(d.el, d));
+
 function markChars(){
   for(const c of chars){
     if(c.done){ c.avail = false; continue; }
     const f = c.frame;
-    // a text block opens only after the box that contains it has been built
     if(f.gate){
-      const g = draws.find(d => d.el === f.gate);
+      const g = drawByEl.get(f.gate);
       if(g && !g.done){ c.avail = false; continue; }
     }
     const r = c.span.getBoundingClientRect();
     c.x = r.left + r.width/2;
     c.y = r.top + r.height/2;
-    c.avail = r.width > 0 && r.bottom > -60 && r.top < innerHeight + 140;
+    c.avail = onScreen(r);
   }
 }
 
-/* ═══════════════ cursor ═══════════════ */
-let retired = 0;
+/* ═══════════════ cursor: constant speed, no inertia ═══════════════ */
 const cursors = [];
+let idCounter = 0;
 
 class Cursor {
-  constructor(id){
-    this.id = id;
-    this.name = NAMES[id % NAMES.length];
-    this.color = COLORS[id % COLORS.length];
+  constructor(){
+    this.id = idCounter++;
+    this.name = NAMES[this.id % NAMES.length];
+    this.color = COLORS[this.id % COLORS.length];
     this.shape = 'arrow';
-    this.x = id % 2 === 0 ? -30 - rand(0,60) : innerWidth + 30 + rand(0,60);
-    this.y = rand(0.15,0.85) * innerHeight;
-    this.vx = 0; this.vy = 0;
-    this.maxSpeed = rand(950, 1500);
-    this.spring = rand(18, 26);
-    this.draw = null;      // active draw task
-    this.char = null;      // active character task
+    // enter from an edge, like the reference clip
+    const side = Math.random() < 0.5 ? -1 : 1;
+    this.x = side < 0 ? -40 : innerWidth + 40;
+    this.y = rand(0.12, 0.88) * innerHeight;
+    // constant travel speed; no acceleration, no damping
+    this.speed = rand(950, 1500);
+    this.tx = null; this.ty = null;          // current steering target
+    this.draw = null;
+    this.char = null;
     this.press = 0;
-    this.phase = rand(0, Math.PI*2);
-    this.spin = rand(0.10, 0.22);
-    this.drift = rand(90, 200);
+    this.leaving = false;
+    this.leaveDir = 0;
+    this.idleFor = 0;
 
     this.el = document.createElement('div');
     this.el.className = 'swarm-cursor';
@@ -448,6 +439,10 @@ class Cursor {
 
     overlay.appendChild(this.el);
     overlay.appendChild(this.badge);
+    this.dot = document.createElement('i');
+    this.dot.style.background = this.color;
+    this.dot.textContent = this.name[0];
+    hudDots.appendChild(this.dot);
   }
 
   setShape(shape){
@@ -458,22 +453,24 @@ class Cursor {
     this.svg.style.transformOrigin = h[0] + 'px ' + h[1] + 'px';
   }
 
-  seek(tx, ty, dt, k){
-    this.vx += (tx - this.x) * k * dt;
-    this.vy += (ty - this.y) * k * dt;
-  }
+  aim(x, y){ this.tx = x; this.ty = y; }
+  arrive(x, y){ this.x = x; this.y = y; this.tx = this.ty = null; }
 
+  // straight-line motion at a fixed speed — no force, no drift
   step(dt){
-    const damp = Math.exp(-dt * 3.8);
-    this.vx *= damp; this.vy *= damp;
-    const sp = Math.hypot(this.vx, this.vy);
-    if(sp > this.maxSpeed){
-      this.vx = this.vx / sp * this.maxSpeed;
-      this.vy = this.vy / sp * this.maxSpeed;
+    if(this.tx != null && this.ty != null){
+      const dx = this.tx - this.x, dy = this.ty - this.y;
+      const d = Math.hypot(dx, dy);
+      const travel = this.speed * dt;
+      if(d <= travel || d < 0.75){
+        this.x = this.tx; this.y = this.ty;
+        this.tx = this.ty = null;
+      }else{
+        this.x += dx / d * travel;
+        this.y += dy / d * travel;
+      }
     }
-    this.x += this.vx * dt;
-    this.y += this.vy * dt;
-    this.press = Math.max(0, this.press - dt * 5);
+    this.press = Math.max(0, this.press - dt * 6);
 
     this.el.style.transform = 'translate(' + this.x.toFixed(1) + 'px,' + this.y.toFixed(1) + 'px)';
     const h = HOT[this.shape] || HOT.arrow;
@@ -487,20 +484,38 @@ class Cursor {
     this.badge.style.top = y.toFixed(1) + 'px';
   }
   hideBadge(){ this.badge.style.display = 'none'; }
+
+  // task finished → run off the nearest side of the screen
+  leave(){
+    if(this.leaving) return;
+    this.leaving = true;
+    this.draw = null;
+    this.char = null;
+    this.setShape('arrow');
+    this.hideBadge();
+    this.leaveDir = this.x < innerWidth / 2 ? -1 : 1;
+    this.tx = this.leaveDir < 0 ? -70 : innerWidth + 70;
+    this.ty = clamp(this.y + rand(-90, 90), 30, innerHeight - 30);
+  }
+
+  get offscreen(){
+    return this.x < -50 || this.x > innerWidth + 50;
+  }
+
+  destroy(){
+    this.el.remove();
+    this.badge.remove();
+    if(this.dot.parentNode) this.dot.remove();
+  }
 }
 
-function addCursor(){
-  const c = new Cursor(cursors.length + retired);
+function spawnCursor(){
+  const c = new Cursor();
   cursors.push(c);
-  const dot = document.createElement('i');
-  dot.style.background = c.color;
-  dot.textContent = c.name[0];
-  hudDots.appendChild(dot);
   return c;
 }
-for(let i = 0; i < MIN_AGENTS; i++) addCursor();
 
-/* ═══════════════ selection chrome ═══════════════ */
+/* ═══════════════ marquee chrome ═══════════════ */
 function newOutline(){
   const d = document.createElement('div');
   d.className = 'build-outline';
@@ -523,11 +538,15 @@ function newDim(){
   return d;
 }
 
-/* ═══════════════ task release / finish ═══════════════ */
-function releaseDraw(it){
+/* ═══════════════ finish / release ═══════════════ */
+function clearChrome(it){
   if(it.outline){ it.outline.remove(); it.outline = null; }
   if(it.handles){ it.handles.forEach(h => h.remove()); it.handles = null; }
   if(it.dim){ it.dim.remove(); it.dim = null; }
+}
+
+function releaseDraw(it){
+  clearChrome(it);
   it.claimed = null;
   it.state = 'wait';
   it.p = 0;
@@ -535,7 +554,6 @@ function releaseDraw(it){
 
 function finishDraw(it){
   show(it.el);
-  // flash the outline as the box fills in, so each one reads as "just drawn"
   it.el.classList.add('just-built');
   setTimeout(() => it.el.classList.remove('just-built'), 760);
   if(it.img){
@@ -543,9 +561,8 @@ function finishDraw(it){
   }
   if(it.outline) it.outline.style.opacity = '0';
   if(it.dim) it.dim.style.opacity = '0';
-  const kill = [it.outline, it.dim, ...(it.handles||[])];
-  setTimeout(() => { kill.forEach(x => x && x.remove()); }, 420);
-  it.outline = it.handles = it.dim = null;
+  if(it.handles) it.handles.forEach(h => h.style.opacity = '0');
+  setTimeout(() => clearChrome(it), 380);
   it.done = true;
   it.claimed = null;
   it.state = 'done';
@@ -554,8 +571,6 @@ function finishDraw(it){
 }
 
 function finishChar(c, cur){
-  // make sure nothing above this character is still faded (cards fade in as a
-  // whole, and a lingering opacity:0 would swallow the typed text)
   let p = c.span;
   while(p && p !== document.body){
     if(p.style && p.style.opacity === '0') p.style.opacity = '1';
@@ -571,32 +586,29 @@ function finishChar(c, cur){
   doneUnits++;
 }
 
-/* ═══════════════ assignment ═══════════════ */
-function nextDraws(){
-  const out = [];
-  for(const it of draws){
-    if(it.done || it.claimed) continue;
-    if(!inView(it)) continue;
-    out.push(it);
-  }
-  out.sort((a,b) => (a.docY - b.docY) || (a.docX - b.docX));
-  return out;
+/* ═══════════════ work accounting ═══════════════ */
+function visibleDraws(){
+  return visibleNow.filter(v => !v.it.done).map(v => v.it);
+}
+function hasVisibleWork(){
+  for(const v of visibleNow) if(!v.it.done) return true;
+  for(const c of chars) if(c.avail && !c.done) return true;
+  return false;
 }
 
+/* ═══════════════ assignment ═══════════════ */
 function assign(){
-  // Two lanes run in parallel, as in the reference clip: a few cursors drag
-  // marquees over boxes while the rest type characters into finished regions.
-  const free = cursors.filter(c => !c.draw && !c.char);
+  const free = cursors.filter(c => !c.leaving && !c.draw && !c.char);
   if(!free.length) return;
 
-  const open = nextDraws();
+  const open = visibleDraws().filter(it => !it.claimed);
   const openChars = chars.filter(ch => ch.avail && !ch.done && !ch.cursor);
 
   for(const c of free){
-    const drawingCount = cursors.filter(x => x.draw).length;
-    // keep roughly two thirds of free agents on typing once there is text to type
+    const drawingNow = cursors.filter(x => x.draw).length;
     const drawCap = openChars.length ? Math.max(2, Math.ceil(free.length / 3)) : free.length;
-    if(open.length && drawingCount < drawCap){
+
+    if(open.length && drawingNow < drawCap){
       const it = open.shift();
       it.claimed = c;
       c.draw = it;
@@ -604,16 +616,17 @@ function assign(){
       it.p = 0;
       const r = it.el.getBoundingClientRect();
       it.rect = { x:r.left, y:r.top, w:r.width, h:r.height };
-      it.dur = clamp(0.16 + Math.max(r.width, r.height) / 1800, 0.16, 0.42);
+      it.dur = clamp(0.14 + Math.max(r.width, r.height) / 2200, 0.14, 0.38);
       it.outline = newOutline();
       it.outline.style.left = it.rect.x + 'px';
       it.outline.style.top = it.rect.y + 'px';
       it.outline.style.width = '0px';
       it.outline.style.height = '0px';
       c.setShape('cross');
+      c.aim(it.rect.x + 4, it.rect.y + 4);
       continue;
     }
-    // otherwise type the nearest available character
+
     let best = null, bd = Infinity;
     for(const ch of openChars){
       if(ch.cursor) continue;
@@ -624,24 +637,41 @@ function assign(){
       best.cursor = c;
       c.char = best;
       c.setShape('ibeam');
+      c.aim(best.x, best.y);
     }
   }
 }
 
-function scaleSwarm(){
-  let open = 0;
-  for(const it of draws) if(!it.done && inView(it)) open++;
-  for(const c of chars) if(c.avail && !c.done) open++;
-  const want = clamp(MIN_AGENTS + Math.floor(open / 4), MIN_AGENTS, MAX_AGENTS);
-  while(cursors.length < want) addCursor();
-  while(cursors.length > want){
-    const c = cursors.pop();
-    if(c.draw) releaseDraw(c.draw);
-    if(c.char && c.char.cursor === c) c.char.cursor = null;
-    c.el.remove();
-    c.badge.remove();
-    if(hudDots.lastChild) hudDots.removeChild(hudDots.lastChild);
-    retired++;
+/* ═══════════════ population: spawn for work, vanish when done ═══════════════ */
+let spawnCooldown = 0;
+let visibleNow = [];
+
+function measureVisible(){
+  visibleNow = [];
+  for(const it of draws){
+    if(it.done) continue;
+    const r = it.el.getBoundingClientRect();
+    if(onScreen(r)) visibleNow.push({ it, top:r.top, left:r.left, w:r.width, h:r.height });
+  }
+  visibleNow.sort((a,b) => (a.top - b.top) || (a.left - b.left));
+  return visibleNow;
+}
+
+function maintainSwarm(dt){
+  spawnCooldown = Math.max(0, spawnCooldown - dt);
+
+  let work = 0;
+  for(const v of visibleNow) if(!v.it.done) work += 2;
+  for(const c of chars) if(c.avail && !c.done) work += 1;
+
+  const want = work > 0 ? clamp(MIN_AGENTS + Math.floor(work / 7), MIN_AGENTS, MAX_AGENTS) : 0;
+  const active = cursors.filter(c => !c.leaving).length;
+
+  // several agents arrive at once when a fresh screen of work appears
+  if(work > 0 && active < want && spawnCooldown <= 0){
+    const burst = Math.min(want - active, 4);
+    for(let i = 0; i < burst; i++) spawnCursor();
+    spawnCooldown = 0.18;
   }
 }
 
@@ -655,34 +685,45 @@ function tick(now){
   lastT = now;
 
   measureT += dt;
-  if(measureT > 0.12){
+  if(measureT > 0.1){
     measureT = 0;
     markChars();
-    scaleSwarm();
+    measureVisible();
+    maintainSwarm(dt);
   }
 
   assign();
 
-  const cx = innerWidth / 2, cy = innerHeight / 2;
+  for(let i = cursors.length - 1; i >= 0; i--){
+    const c = cursors[i];
 
-  for(const c of cursors){
-    /* ---- drawing a frame/rect/image ---- */
+    /* ---- leaving: run off screen, then disappear ---- */
+    if(c.leaving){
+      c.step(dt);
+      if(c.offscreen){
+        c.destroy();
+        cursors.splice(i, 1);
+      }
+      continue;
+    }
+
+    /* ---- drawing a marquee ---- */
     if(c.draw){
       const it = c.draw;
       const r = it.rect;
 
       if(it.state === 'approach'){
-        c.seek(r.x + 6, r.y + 6, dt, c.spring);
-        c.showBadge(r.x + r.w/2, r.y - 18);
-        if(Math.hypot(r.x + 6 - c.x, r.y + 6 - c.y) < 14){
+        const d = Math.hypot(r.x + 4 - c.x, r.y + 4 - c.y);
+        if(d < 8){
           it.state = 'draw';
           it.p = 0;
-          if(it.kind !== 'image'){
-            it.handles = [newHandle(), newHandle(), newHandle(), newHandle()];
-          }
+          if(it.kind !== 'image') it.handles = [newHandle(), newHandle(), newHandle(), newHandle()];
           it.dim = newDim();
           it.dim.textContent = Math.round(r.w) + ' × ' + Math.round(r.h);
           if(it.kind === 'image') it.dim.classList.add('ai');
+        }else{
+          c.aim(r.x + 4, r.y + 4);
+          c.showBadge(r.x + r.w/2, r.y - 18);
         }
       }
       else if(it.state === 'draw'){
@@ -692,10 +733,8 @@ function tick(now){
         it.outline.style.width = w + 'px';
         it.outline.style.height = h + 'px';
         it.outline.style.opacity = '1';
-        // the cursor rides the growing corner, like dragging a marquee
-        c.x = r.x + w;
-        c.y = r.y + h;
-        c.vx = c.vy = 0;
+        // the cursor rides the growing corner, exactly like a marquee drag
+        c.arrive(r.x + w, r.y + h);
         c.press = 1;
         c.showBadge(r.x + r.w/2, r.y - 18);
         if(it.dim){
@@ -706,10 +745,10 @@ function tick(now){
         }
         if(it.handles){
           const pts = [[r.x,r.y],[r.x+r.w,r.y],[r.x,r.y+r.h],[r.x+r.w,r.y+r.h]];
-          it.handles.forEach((hd,i)=>{
+          it.handles.forEach((hd,k)=>{
             hd.style.opacity = '1';
-            hd.style.left = (pts[i][0] - 3.5) + 'px';
-            hd.style.top = (pts[i][1] - 3.5) + 'px';
+            hd.style.left = (pts[k][0] - 3.5) + 'px';
+            hd.style.top = (pts[k][1] - 3.5) + 'px';
           });
         }
         if(it.p >= 1){
@@ -717,6 +756,8 @@ function tick(now){
           c.draw = null;
           c.setShape('arrow');
           c.hideBadge();
+          c.idleFor = 0;
+          if(!hasVisibleWork()) c.leave();
         }
       }
       c.step(dt);
@@ -726,32 +767,39 @@ function tick(now){
     /* ---- typing a character ---- */
     if(c.char){
       const ch = c.char;
-      if(ch.done || !ch.avail){ c.char = null; c.setShape('arrow'); c.hideBadge(); c.step(dt); continue; }
-      const d = Math.hypot(ch.x - c.x, ch.y - c.y);
-      if(d < 10){
+      if(ch.done || !ch.avail){
+        if(ch.cursor === c) ch.cursor = null;
+        c.char = null; c.setShape('arrow'); c.hideBadge();
+        c.step(dt);
+        continue;
+      }
+      if(Math.hypot(ch.x - c.x, ch.y - c.y) < 6){
+        ch.cursor = null;
         finishChar(ch, c);
+        c.idleFor = 0;
+        if(!hasVisibleWork()) c.leave();
       }else{
-        c.seek(ch.x, ch.y, dt, c.spring + 6);
-        c.press = Math.max(c.press, clamp(1 - d / 60, 0, 1));
+        c.aim(ch.x, ch.y);
+        c.press = Math.max(c.press, 0.5);
         c.showBadge(ch.x, ch.y - 20);
       }
       c.step(dt);
       continue;
     }
 
-    /* ---- idle: slow drift around the viewport centre ---- */
-    c.phase += c.spin * dt;
-    const tx = cx + Math.cos(c.phase + c.id * 0.618) * c.drift;
-    const ty = cy + Math.sin(c.phase + c.id * 0.411) * c.drift * 0.6;
-    c.seek(tx, ty, dt, 1.6);
+    /* ---- idle: leave if there is nothing to do on screen ---- */
+    c.idleFor += dt;
+    if(c.idleFor > 0.55 && !hasVisibleWork()) c.leave();
     c.step(dt);
   }
 
   /* ---- HUD ---- */
   const drawingNow = cursors.filter(c => c.draw && c.draw.state === 'draw').length;
   const typingNow  = cursors.filter(c => c.char).length;
+  const leavingNow = cursors.filter(c => c.leaving).length;
   if(drawingNow) stateLabel = 'Framing';
   else if(typingNow) stateLabel = 'Typing';
+  else if(leavingNow) stateLabel = 'Leaving';
   else stateLabel = 'Idle';
 
   const pct = totalUnits ? (doneUnits / totalUnits * 100) : 0;
@@ -762,13 +810,15 @@ function tick(now){
 }
 
 /* ═══════════════ events ═══════════════ */
-addEventListener('scroll', () => { markChars(); scaleSwarm(); docOrder(); }, { passive:true });
-addEventListener('resize', () => { markChars(); scaleSwarm(); docOrder(); }, { passive:true });
-addEventListener('load', () => { docOrder(); markChars(); });
+addEventListener('scroll', () => { markChars(); measureVisible(); maintainSwarm(1); }, { passive:true });
+addEventListener('resize', () => { markChars(); measureVisible(); maintainSwarm(1); }, { passive:true });
+addEventListener('load', () => { markChars(); measureVisible(); maintainSwarm(1); });
 
 markChars();
+measureVisible();
 hud.classList.add('on');
 hudStatus.textContent = 'Scanning…';
+spawnCooldown = 0;
 requestAnimationFrame(tick);
 
 /* Safety net: never leave a blank page. */
