@@ -123,8 +123,8 @@ h2{font-size:32px;font-weight:700;letter-spacing:-.02em;margin-bottom:12px}
 /* Footer */
 footer{padding:40px;text-align:center;color:var(--muted);font-size:13px;border-top:1px solid var(--border)}
 
-/* ── Swarm HUD ── */
-#swarm-hud{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);z-index:99998;
+/* ── Swarm HUD (bottom-left) ── */
+#swarm-hud{position:fixed;left:20px;bottom:20px;z-index:99998;
   display:flex;align-items:center;gap:10px;padding:6px 10px;background:rgba(15,17,22,.92);
   backdrop-filter:blur(12px);border-radius:12px;border:1px solid rgba(255,255,255,.06);
   font:500 12px var(--font);color:var(--muted);opacity:0;transition:opacity .4s;pointer-events:none}
@@ -386,6 +386,54 @@ function drawVisible(it){
 let drawByEl = new Map();
 draws.forEach(d => drawByEl.set(d.el, d));
 
+/* ═══════════════ line grouping: one cursor types one line, left → right ═══════════════ */
+// Characters are bucketed into visual lines (same baseline band, same block).
+// A line is typed strictly in reading order by a single cursor, so you never see
+// a whole crowd piling onto one word.
+function buildLines(){
+  const byKey = new Map();
+  for(const c of chars){
+    if(c.done) continue;
+    const r = c.span.getBoundingClientRect();
+    if(r.width < 0.5) continue;
+    // bucket by block + rounded vertical position → one entry per visual line
+    const key = c.frame.el + '|' + Math.round((r.top + r.height / 2) / 6);
+    if(!byKey.has(key)) byKey.set(key, []);
+    byKey.get(key).push({ c, x: r.left, y: r.top + r.height / 2, w: r.width });
+  }
+  const lines = [];
+  for(const [, list] of byKey){
+    list.sort((a, b) => a.x - b.x);            // reading order, left to right
+    lines.push({
+      chars: list.map(o => o.c),
+      top: Math.min(...list.map(o => o.y)),
+      left: list[0].x,
+      right: list[list.length - 1].x,
+      owner: null,
+      done: false
+    });
+  }
+  lines.sort((a, b) => (a.top - b.top) || (a.left - b.left));
+  return lines;
+}
+
+let lines = [];
+let linesDirty = true;
+function refreshLines(){ lines = buildLines(); linesDirty = false; }
+
+// the next character a line still needs: its leftmost untyped one
+function nextCharOf(line){
+  for(const c of line.chars){
+    if(!c.done) return c;
+  }
+  return null;
+}
+function lineProgress(line){
+  let n = 0;
+  for(const c of line.chars) if(c.done) n++;
+  return n / Math.max(1, line.chars.length);
+}
+
 function markChars(){
   for(const c of chars){
     if(c.done){ c.avail = false; continue; }
@@ -397,8 +445,11 @@ function markChars(){
     const r = c.span.getBoundingClientRect();
     c.x = r.left + r.width/2;
     c.y = r.top + r.height/2;
-    c.avail = onScreen(r);
+    // only the leftmost pending character of a visible line may be typed
+    c.avail = false;
+    if(onScreen(r)) c.onScreen = true; else c.onScreen = false;
   }
+  linesDirty = true;
 }
 
 /* ═══════════════ cursor: constant speed, no inertia ═══════════════ */
@@ -420,6 +471,7 @@ class Cursor {
     this.tx = null; this.ty = null;          // current steering target
     this.draw = null;
     this.char = null;
+    this.line = null;
     this.press = 0;
     this.leaving = false;
     this.leaveDir = 0;
@@ -489,6 +541,8 @@ class Cursor {
   leave(){
     if(this.leaving) return;
     this.leaving = true;
+    if(this.line && this.line.owner === this) this.line.owner = null;
+    this.line = null;
     this.draw = null;
     this.char = null;
     this.setShape('arrow');
@@ -592,7 +646,13 @@ function visibleDraws(){
 }
 function hasVisibleWork(){
   for(const v of visibleNow) if(!v.it.done) return true;
-  for(const c of chars) if(c.avail && !c.done) return true;
+  if(linesDirty) refreshLines();
+  for(const L of lines){
+    if(L.done) continue;
+    const next = nextCharOf(L);
+    if(!next) continue;
+    if(onScreen(next.span.getBoundingClientRect())) return true;
+  }
   return false;
 }
 
@@ -601,12 +661,24 @@ function assign(){
   const free = cursors.filter(c => !c.leaving && !c.draw && !c.char);
   if(!free.length) return;
 
+  if(linesDirty) refreshLines();
+
   const open = visibleDraws().filter(it => !it.claimed);
-  const openChars = chars.filter(ch => ch.avail && !ch.done && !ch.cursor);
+
+  // lines that still need typing, visible on screen, and not already owned
+  const openLines = lines.filter(L => {
+    if(L.done || L.owner) return false;
+    const next = nextCharOf(L);
+    if(!next) return false;
+    const r = next.span.getBoundingClientRect();
+    return onScreen(r);
+  });
 
   for(const c of free){
+    // Someone must frame the boxes; typing gets the rest. Lines only start once
+    // some box work exists or is already handled — either way one line = one cursor.
     const drawingNow = cursors.filter(x => x.draw).length;
-    const drawCap = openChars.length ? Math.max(2, Math.ceil(free.length / 3)) : free.length;
+    const drawCap = openLines.length ? Math.max(2, Math.ceil(free.length / 3)) : free.length;
 
     if(open.length && drawingNow < drawCap){
       const it = open.shift();
@@ -626,17 +698,24 @@ function assign(){
       continue;
     }
 
+    // A cursor takes an entire line and types it left to right, one key at a time.
+    // Nearest line first, so agents don't criss-cross the viewport.
     let best = null, bd = Infinity;
-    for(const ch of openChars){
-      if(ch.cursor) continue;
-      const d = Math.hypot(ch.x - c.x, ch.y - c.y);
-      if(d < bd){ bd = d; best = ch; }
+    for(const L of openLines){
+      if(L.owner) continue;
+      const d = Math.hypot(L.left + 12 - c.x, L.top - c.y);
+      if(d < bd){ bd = d; best = L; }
     }
     if(best){
-      best.cursor = c;
-      c.char = best;
-      c.setShape('ibeam');
-      c.aim(best.x, best.y);
+      best.owner = c;
+      c.line = best;
+      const ch = nextCharOf(best);
+      if(ch){
+        ch.cursor = c;
+        c.char = ch;
+        c.setShape('ibeam');
+        c.aim(ch.x, ch.y);
+      }
     }
   }
 }
@@ -661,7 +740,13 @@ function maintainSwarm(dt){
 
   let work = 0;
   for(const v of visibleNow) if(!v.it.done) work += 2;
-  for(const c of chars) if(c.avail && !c.done) work += 1;
+  // one cursor per pending line
+  if(linesDirty) refreshLines();
+  for(const L of lines){
+    if(L.done) continue;
+    const next = nextCharOf(L);
+    if(next && onScreen(next.span.getBoundingClientRect())) work += 3;
+  }
 
   const want = work > 0 ? clamp(MIN_AGENTS + Math.floor(work / 7), MIN_AGENTS, MAX_AGENTS) : 0;
   const active = cursors.filter(c => !c.leaving).length;
@@ -801,7 +886,8 @@ function tick(now){
       const cr = ch.span.getBoundingClientRect();
       if(!onScreen(cr)){
         if(ch.cursor === c) ch.cursor = null;
-        ch.avail = false;
+        if(c.line && c.line.owner === c) c.line.owner = null;
+        c.line = null;
         c.char = null; c.setShape('arrow'); c.hideBadge();
         c.tx = c.ty = null;
         c.step(dt);
@@ -809,12 +895,32 @@ function tick(now){
       }
       ch.x = cr.left + cr.width/2;
       ch.y = cr.top + cr.height/2;
-      ch.avail = true;
       if(Math.hypot(ch.x - c.x, ch.y - c.y) < 5){
         ch.cursor = null;
         finishChar(ch, c);
         c.idleFor = 0;
-        if(!hasVisibleWork()) c.leave();
+
+        // keep going on the same line, strictly the next character to the right
+        const L = c.line;
+        const nxt = L ? nextCharOf(L) : null;
+        if(nxt){
+          nxt.cursor = c;
+          c.char = nxt;
+          c.setShape('ibeam');
+          const nr = nxt.span.getBoundingClientRect();
+          nxt.x = nr.left + nr.width/2;
+          nxt.y = nr.top + nr.height/2;
+          c.aim(nxt.x, nxt.y);
+        }else{
+          // line finished → release the line
+          if(L) L.done = true;
+          c.line = null;
+          c.char = null;
+          c.setShape('arrow');
+          c.hideBadge();
+          c.tx = c.ty = null;
+          if(!hasVisibleWork()) c.leave();
+        }
       }else{
         c.aim(ch.x, ch.y);
         c.press = Math.max(c.press, 0.5);
