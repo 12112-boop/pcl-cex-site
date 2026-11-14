@@ -119,6 +119,16 @@ h2{font-size:32px;font-weight:700;letter-spacing:-.02em;margin-bottom:12px}
   radial-gradient(ellipse 50% 40% at 50% 60%,rgba(127,90,240,.08),transparent)}
 .cta h2{margin-bottom:8px}
 .cta p{color:var(--muted);margin-bottom:28px;font-size:16px}
+/* Lanzou download card */
+.lanzou{margin:28px auto 0;max-width:420px;background:var(--card);border:1px solid var(--border);
+  border-radius:var(--r);padding:20px;text-align:center}
+.lanzou h3{font-size:15px;font-weight:600;margin-bottom:4px}
+.lanzou .hint{font-size:12px;color:var(--muted);margin-bottom:14px}
+.lanzou .hint b{color:var(--green);font-weight:600}
+.lanzou .btn{width:100%;justify-content:center}
+.lanzou .pwd-note{font-size:11px;color:var(--muted);margin-top:10px}
+.lanzou .pwd-note code{background:rgba(255,255,255,.06);padding:1px 5px;border-radius:4px;
+  font:600 11px var(--font);color:var(--text)}
 
 /* Footer */
 footer{padding:40px;text-align:center;color:var(--muted);font-size:13px;border-top:1px solid var(--border)}
@@ -274,6 +284,17 @@ footer{padding:40px;text-align:center;color:var(--muted);font-size:13px;border-t
       <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 .5C5.65.5.5 5.65.5 12c0 5.09 3.29 9.4 7.86 10.92.58.1.79-.25.79-.55v-2.1c-3.2.7-3.87-1.55-3.87-1.55-.53-1.33-1.28-1.69-1.28-1.69-1.05-.71.08-.7.08-.7 1.16.08 1.77 1.19 1.77 1.19 1.03 1.77 2.7 1.26 3.36.96.1-.75.4-1.26.73-1.55-2.55-.29-5.24-1.28-5.24-5.68 0-1.26.45-2.29 1.19-3.09-.12-.29-.52-1.46.11-3.05 0 0 .97-.31 3.18 1.18a11.05 11.05 0 015.79 0c2.2-1.49 3.17-1.18 3.17-1.18.63 1.59.23 2.76.11 3.05.74.8 1.19 1.83 1.19 3.09 0 4.41-2.69 5.38-5.25 5.67.41.35.78 1.05.78 2.12v3.14c0 .3.2.66.8.55C18.71 21.4 22 17.09 22 12 22 5.65 16.85.5 12 .5z"/></svg>
       <span data-frame="text">查看源码</span>
     </a>
+  </div>
+
+  <!-- Lanzouyun download -->
+  <div class="lanzou" data-build="lanzou">
+    <h3 data-build="heading"><span data-frame="text">蓝奏云下载</span></h3>
+    <p class="hint"><span data-frame="text">文件 74.4 MB · 解压密码 </span><b data-frame="text">pclcex</b></p>
+    <button class="btn btn-pri" id="lanzou-btn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m0 0l-4-4m4 4l4-4"/><path d="M5 19h14"/></svg>
+      <span data-frame="text">打开蓝奏云 · 密码已复制</span>
+    </button>
+    <p class="pwd-note"><span data-frame="text">点击后密码 </span><code data-frame="text">pclcex</code><span data-frame="text"> 已复制到剪贴板，直接粘贴即可</span></p>
   </div>
 </section>
 
@@ -970,6 +991,37 @@ function tick(now){
 addEventListener('scroll', () => { markChars(); measureVisible(); maintainSwarm(1); }, { passive:true });
 addEventListener('resize', () => { markChars(); measureVisible(); maintainSwarm(1); }, { passive:true });
 addEventListener('load', () => { markChars(); measureVisible(); maintainSwarm(1); });
+
+/* Lanzouyun download: copy the extract password to clipboard, then open the share.
+   The browser blocks programmatic fill of cross-origin form fields, so the
+   closest we can get to "auto-fill" is pre-copying the password for a one-press paste. */
+const lanzouBtn = document.getElementById('lanzou-btn');
+if(lanzouBtn){
+  lanzouBtn.addEventListener('click', () => {
+    const pwd = 'pclcex';
+    const done = () => {
+      // brief visual feedback on the button
+      const orig = lanzouBtn.querySelector('span').textContent;
+      const sp = lanzouBtn.querySelector('span');
+      sp.textContent = '密码已复制 · 已打开';
+      setTimeout(() => { sp.textContent = orig; }, 2200);
+    };
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(pwd).then(done).catch(done);
+    } else {
+      // fallback for older browsers
+      const ta = document.createElement('textarea');
+      ta.value = pwd;
+      ta.style.cssText = 'position:fixed;opacity:0';
+      document.body.appendChild(ta);
+      ta.select();
+      try { document.execCommand('copy'); } catch(_){}
+      document.body.removeChild(ta);
+      done();
+    }
+    window.open('https://wwayy.lanzoure.com/i8WvH4fke8ob', '_blank', 'noopener');
+  });
+}
 
 markChars();
 measureVisible();
