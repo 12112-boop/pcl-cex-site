@@ -306,8 +306,8 @@ class Cursor {
     this.x = id % 2 === 0 ? -30 - rand(0,60) : innerWidth + 30 + rand(0,60);
     this.y = rand(0.15,0.85) * innerHeight;
     this.vx = 0; this.vy = 0;
-    this.maxSpeed = rand(520, 780);
-    this.spring = rand(15, 19);
+    this.maxSpeed = rand(900, 1400);
+    this.spring = rand(18, 24);
     this.task = null;
     this.press = 0;
     this.phase = rand(0, Math.PI*2);
@@ -345,7 +345,7 @@ class Cursor {
 
   step(dt){
     // strong damping: smooth gliding, no wild swings
-    const damp = Math.exp(-dt * 4.5);
+    const damp = Math.exp(-dt * 3.8);
     this.vx *= damp; this.vy *= damp;
     const sp = Math.hypot(this.vx, this.vy);
     if(sp > this.maxSpeed){
