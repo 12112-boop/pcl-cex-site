@@ -616,7 +616,6 @@ function assign(){
       it.p = 0;
       const r = it.el.getBoundingClientRect();
       it.rect = { x:r.left, y:r.top, w:r.width, h:r.height };
-      it.dur = clamp(0.14 + Math.max(r.width, r.height) / 2200, 0.14, 0.38);
       it.outline = newOutline();
       it.outline.style.left = it.rect.x + 'px';
       it.outline.style.top = it.rect.y + 'px';
@@ -710,30 +709,55 @@ function tick(now){
     /* ---- drawing a marquee ---- */
     if(c.draw){
       const it = c.draw;
-      const r = it.rect;
+
+      // Always read the element's live position. Caching the rect at assignment
+      // time went stale whenever the page scrolled while a cursor was inbound,
+      // which made the marquee start away from the box.
+      const rr = it.el.getBoundingClientRect();
+      const r = it.rect = { x:rr.left, y:rr.top, w:rr.width, h:rr.height };
+
+      // the box scrolled away while the cursor was inbound: drop it, don't draw
+      if(it.state === 'approach' && !onScreen(rr)){
+        releaseDraw(it);
+        c.draw = null;
+        c.setShape('arrow');
+        c.hideBadge();
+        c.tx = c.ty = null;
+        c.step(dt);
+        continue;
+      }
 
       if(it.state === 'approach'){
-        const d = Math.hypot(r.x + 4 - c.x, r.y + 4 - c.y);
-        if(d < 8){
+        const d = Math.hypot(r.x - c.x, r.y - c.y);
+        if(d < 4){
           it.state = 'draw';
           it.p = 0;
+          it.outline.style.left = r.x + 'px';
+          it.outline.style.top = r.y + 'px';
           if(it.kind !== 'image') it.handles = [newHandle(), newHandle(), newHandle(), newHandle()];
           it.dim = newDim();
           it.dim.textContent = Math.round(r.w) + ' × ' + Math.round(r.h);
           if(it.kind === 'image') it.dim.classList.add('ai');
         }else{
-          c.aim(r.x + 4, r.y + 4);
+          // keep retargeting the live corner so the cursor really lands on the box
+          c.aim(r.x, r.y);
           c.showBadge(r.x + r.w/2, r.y - 18);
         }
       }
       else if(it.state === 'draw'){
-        it.p = Math.min(1, it.p + dt / it.dur);
-        const w = Math.max(0, r.w * it.p);
-        const h = Math.max(0, r.h * it.p);
+        // The marquee only advances as fast as the cursor can actually travel,
+        // so the outline can never grow ahead of the pointer.
+        const travel = c.speed * dt;
+        const span = Math.max(1, Math.max(r.w, r.h));
+        it.p = Math.min(1, it.p + travel / span);
+        const w = r.w * it.p;
+        const h = r.h * it.p;
+        it.outline.style.left = r.x + 'px';
+        it.outline.style.top = r.y + 'px';
         it.outline.style.width = w + 'px';
         it.outline.style.height = h + 'px';
         it.outline.style.opacity = '1';
-        // the cursor rides the growing corner, exactly like a marquee drag
+        // the pointer sits exactly on the growing corner
         c.arrive(r.x + w, r.y + h);
         c.press = 1;
         c.showBadge(r.x + r.w/2, r.y - 18);
@@ -767,13 +791,26 @@ function tick(now){
     /* ---- typing a character ---- */
     if(c.char){
       const ch = c.char;
-      if(ch.done || !ch.avail){
+      if(ch.done) {
         if(ch.cursor === c) ch.cursor = null;
         c.char = null; c.setShape('arrow'); c.hideBadge();
         c.step(dt);
         continue;
       }
-      if(Math.hypot(ch.x - c.x, ch.y - c.y) < 6){
+      // read the live character position every frame (scroll-safe)
+      const cr = ch.span.getBoundingClientRect();
+      if(!onScreen(cr)){
+        if(ch.cursor === c) ch.cursor = null;
+        ch.avail = false;
+        c.char = null; c.setShape('arrow'); c.hideBadge();
+        c.tx = c.ty = null;
+        c.step(dt);
+        continue;
+      }
+      ch.x = cr.left + cr.width/2;
+      ch.y = cr.top + cr.height/2;
+      ch.avail = true;
+      if(Math.hypot(ch.x - c.x, ch.y - c.y) < 5){
         ch.cursor = null;
         finishChar(ch, c);
         c.idleFor = 0;
