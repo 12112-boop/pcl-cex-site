@@ -20,7 +20,10 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);overflow-x:h
 .swarm-cursor{position:absolute;left:0;top:0;will-change:transform;pointer-events:none}
 .swarm-cursor svg{position:absolute;overflow:visible;filter:drop-shadow(0 1px 2px rgba(0,0,0,.45))}
 .swarm-badge{position:absolute;transform:translateX(-50%);padding:1px 5px;border-radius:3px;
-  color:#fff;font:600 10px/14px var(--font);white-space:nowrap;pointer-events:none;opacity:.85}
+  color:#fff;font:600 10px/14px var(--font);white-space:nowrap;pointer-events:none;opacity:.9}
+/* typing marks: little squares drawn by cursors on the page */
+.type-mark{position:absolute;width:5px;height:5px;border-radius:1px;pointer-events:none;
+  opacity:.9;transition:opacity .3s}
 
 /* ── Sections ── */
 .hero{position:relative;min-height:100vh;display:flex;align-items:center;justify-content:center;
@@ -35,14 +38,18 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);overflow-x:h
 .hero-badge .dot{width:8px;height:8px;border-radius:50%;background:var(--green);
   animation:pulse 2s ease-in-out infinite}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
-h1{font-size:clamp(42px,6vw,64px);font-weight:800;letter-spacing:-.03em;line-height:1.1;margin-bottom:16px}
+
+/* ── Typing text: every character revealed by the swarm ── */
+.tw{display:inline-block;opacity:0}
+.tw.show{opacity:1;transition:opacity .12s}
+h1{font-size:clamp(42px,6vw,64px);font-weight:800;letter-spacing:-.03em;line-height:1.15;margin-bottom:16px}
 h1 .grad{background:linear-gradient(135deg,var(--accent) 0%,var(--accent2) 50%,#F24E1E 100%);
   -webkit-background-clip:text;background-clip:text;color:transparent}
 .hero-sub{font-size:18px;color:var(--muted);line-height:1.7;max-width:560px;margin:0 auto 36px}
 .hero-actions{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
 .btn{display:inline-flex;align-items:center;gap:8px;padding:12px 28px;border-radius:10px;
-  font:600 15px var(--font);text-decoration:none;transition:all .2s}
-.btn-pri{background:var(--accent);color:#fff;border:1px solid transparent}
+  font:600 15px var(--font);text-decoration:none;transition:all .2s;border:1px solid transparent}
+.btn-pri{background:var(--accent);color:#fff}
 .btn-pri:hover{background:#3a7aef;box-shadow:0 4px 20px rgba(79,140,252,.35)}
 .btn-ghost{color:var(--text);border:1px solid var(--border);background:rgba(255,255,255,.03)}
 .btn-ghost:hover{background:rgba(255,255,255,.07);border-color:var(--accent)}
@@ -92,7 +99,7 @@ footer{padding:40px;text-align:center;color:var(--muted);font-size:13px;border-t
 #swarm-hud .dots{display:flex;padding-left:5px}
 #swarm-hud .dots i{display:block;width:16px;height:16px;margin-left:-4px;border-radius:50%;
   border:2px solid #0f1116;font:700 8px/12px var(--font);font-style:normal;text-align:center;color:#fff}
-#swarm-hud .status{color:#ccc}
+#swarm-hud .status{color:#ccc;font-variant-numeric:tabular-nums}
 #swarm-hud .bar{width:56px;height:3px;border-radius:2px;background:#2a2f3d;overflow:hidden}
 #swarm-hud .bar i{display:block;height:100%;width:0;background:var(--accent);transition:width .35s ease}
 
@@ -109,26 +116,28 @@ footer{padding:40px;text-align:center;color:var(--muted);font-size:13px;border-t
 <div id="swarm-overlay"></div>
 <div id="swarm-hud">
   <div class="dots" id="hud-dots"></div>
-  <span class="status" id="hud-status">Scanning page…</span>
+  <span class="status" id="hud-status">Swarm ready</span>
   <div class="bar"><i id="hud-bar"></i></div>
 </div>
 
 <!-- ═══ Hero ═══ -->
 <section class="hero">
   <div class="hero-inner">
-    <div class="hero-badge"><span class="dot"></span>PCL-CEX v2.16.0</div>
-    <h1>Plain Craft <span class="grad">Launcher</span><br>Community Edition</h1>
-    <p class="hero-sub">
+    <div class="hero-badge"><span class="dot"></span><span data-swarm> PCL-CEX v2.16.0</span></div>
+    <h1>
+      <span data-swarm>Plain Craft </span><span class="grad" data-swarm>Launcher</span><br>
+      <span data-swarm>Community Edition</span>
+    </h1>
+    <p class="hero-sub" data-swarm>
       专为 Minecraft 玩家打造的社区增强启动器。支持微软/离线/第三方账号、
-      多实例管理、Mod 下载、皮肤库、AI 崩溃分析等完整功能——
-      由社区驱动，免费开源。
+      多实例管理、Mod 下载、皮肤库、AI 崩溃分析等完整功能——由社区驱动，免费开源。
     </p>
     <div class="hero-actions">
       <a class="btn btn-pri" href="https://github.com/12112-boop/PCL-CEX/releases" target="_blank">
-        ⬇ 下载最新版
+        <span data-swarm>⬇ 下载最新版</span>
       </a>
       <a class="btn btn-ghost" href="https://github.com/12112-boop/PCL-CEX" target="_blank">
-        GitHub 仓库
+        <span data-swarm>GitHub 仓库</span>
       </a>
     </div>
   </div>
@@ -136,45 +145,45 @@ footer{padding:40px;text-align:center;color:var(--muted);font-size:13px;border-t
 
 <!-- ═══ Features ═══ -->
 <section class="features">
-  <div class="section-label">Features</div>
-  <h2>强大的功能集</h2>
-  <p class="section-sub">从游戏下载到崩溃分析，PCL-CEX 覆盖 Minecraft 玩家的完整工作流。</p>
+  <div class="section-label" data-swarm>Features</div>
+  <h2 data-swarm>强大的功能集</h2>
+  <p class="section-sub" data-swarm>从游戏下载到崩溃分析，PCL-CEX 覆盖 Minecraft 玩家的完整工作流。</p>
   <div class="feature-grid">
     <div class="f-card">
       <div class="icon" style="background:rgba(79,140,252,.12);color:var(--accent)">🔧</div>
       <span class="tag">核心</span>
-      <h3>多实例管理</h3>
-      <p>同时管理多个 Minecraft 实例，支持不同版本、Mod 包和配置独立保存，互不干扰。</p>
+      <h3 data-swarm>多实例管理</h3>
+      <p data-swarm>同时管理多个 Minecraft 实例，支持不同版本、Mod 包和配置独立保存，互不干扰。</p>
     </div>
     <div class="f-card">
       <div class="icon" style="background:rgba(242,78,30,.12);color:var(--red)">👤</div>
       <span class="tag">账号</span>
-      <h3>三类账号支持</h3>
-      <p>微软账号、离线账号、第三方认证器（Authlib）全面兼容，一键切换登录。</p>
+      <h3 data-swarm>三类账号支持</h3>
+      <p data-swarm>微软账号、离线账号、第三方认证器（Authlib）全面兼容，一键切换登录。</p>
     </div>
     <div class="f-card">
       <div class="icon" style="background:rgba(127,90,240,.12);color:var(--accent2)">🎨</div>
       <span class="tag">皮肤</span>
-      <h3>内嵌皮肤库</h3>
-      <p>WebView2 内嵌小皮肤站整站浏览，一键下载并应用到当前账号，无需离开启动器。</p>
+      <h3 data-swarm>内嵌皮肤库</h3>
+      <p data-swarm>WebView2 内嵌小皮肤站整站浏览，一键下载并应用到当前账号，无需离开启动器。</p>
     </div>
     <div class="f-card">
       <div class="icon" style="background:rgba(10,207,131,.12);color:var(--green)">⚡</div>
       <span class="tag">AI</span>
-      <h3>AI 崩溃分析</h3>
-      <p>游戏崩溃后自动捕获报告，本地规则即时分析；配置 AI 接口后可获得深入根因诊断。</p>
+      <h3 data-swarm>AI 崩溃分析</h3>
+      <p data-swarm>游戏崩溃后自动捕获报告，本地规则即时分析；配置 AI 接口后可获得深入根因诊断。</p>
     </div>
     <div class="f-card">
       <div class="icon" style="background:rgba(255,199,0,.12);color:var(--yellow)">📦</div>
       <span class="tag">下载</span>
-      <h3>组件与 Mod 下载</h3>
-      <p>Forge、NeoForge、Fabric、OptiFine、Cleanroom 等加载器与 Mod 一站式下载安装。</p>
+      <h3 data-swarm>组件与 Mod 下载</h3>
+      <p data-swarm>Forge、NeoForge、Fabric、OptiFine、Cleanroom 等加载器与 Mod 一站式下载安装。</p>
     </div>
     <div class="f-card">
       <div class="icon" style="background:rgba(79,140,252,.12);color:var(--accent)">🚀</div>
       <span class="tag">更新</span>
-      <h3>自动更新</h3>
-      <p>通过 GitHub Release 单通道自动检测新版本，一键升级保持最新。</p>
+      <h3 data-swarm>自动更新</h3>
+      <p data-swarm>通过 GitHub Release 单通道自动检测新版本，一键升级保持最新。</p>
     </div>
   </div>
 </section>
@@ -182,30 +191,28 @@ footer{padding:40px;text-align:center;color:var(--muted);font-size:13px;border-t
 <!-- ═══ Stats ═══ -->
 <section class="stats">
   <div class="stats-grid">
-    <div><div class="stat-num">2.16</div><div class="stat-label">当前版本</div></div>
-    <div><div class="stat-num">6</div><div class="stat-label">功能模块</div></div>
-    <div><div class="stat-num">3</div><div class="stat-label">账号类型</div></div>
-    <div><div class="stat-num">∞</div><div class="stat-label">社区驱动</div></div>
+    <div><div class="stat-num" data-swarm>2.16</div><div class="stat-label" data-swarm>当前版本</div></div>
+    <div><div class="stat-num" data-swarm>6</div><div class="stat-label" data-swarm>功能模块</div></div>
+    <div><div class="stat-num" data-swarm>3</div><div class="stat-label" data-swarm>账号类型</div></div>
+    <div><div class="stat-num" data-swarm>∞</div><div class="stat-label" data-swarm>社区驱动</div></div>
   </div>
 </section>
 
 <!-- ═══ CTA ═══ -->
 <section class="cta">
-  <h2>开始使用 PCL-CEX</h2>
-  <p>免费下载，无需注册。支持 Windows x64。</p>
+  <h2 data-swarm>开始使用 PCL-CEX</h2>
+  <p data-swarm>免费下载，无需注册。支持 Windows x64。</p>
   <div class="hero-actions">
     <a class="btn btn-pri" href="https://github.com/12112-boop/PCL-CEX/releases/tag/v2.16.0" target="_blank">
-      ⬇ 下载 v2.16.0
+      <span data-swarm>⬇ 下载 v2.16.0</span>
     </a>
     <a class="btn btn-ghost" href="https://github.com/12112-boop/PCL-CEX" target="_blank">
-      查看源码
+      <span data-swarm>查看源码</span>
     </a>
   </div>
 </section>
 
-<footer>
-  PCL-CEX © 2026 — 社区驱动 · 免费开源 · 基于 Plain Craft Launcher
-</footer>
+<footer data-swarm>PCL-CEX © 2026 — 社区驱动 · 免费开源 · 基于 Plain Craft Launcher</footer>
 
 <!-- ═══ Swarm Engine ═══ -->
 <script>
@@ -219,24 +226,19 @@ const NAMES = ["Ada","Linus","Grace","Alan","Margaret","Ken","Barbara","Dennis",
   "Ida","Yukihiro","Shafi","Leslie","Jean","Vint","Lynn","Bram"];
 const COLORS = ["#F24E1E","#A259FF","#1ABCFE","#0ACF83","#FF7262","#FFC700",
   "#9747FF","#E8467C","#14AE5C","#0D99FF","#FF8A00","#00B5CE"];
-const BLUE = "#0D99FF";
 
 const ARROW_D = "M4.6 3.9 C4.2 3.1 4.9 2.4 5.7 2.8 L20.6 9.4 C21.5 9.8 21.4 11.1 20.4 11.3 L13.9 12.9 C13.4 13 13 13.4 12.9 13.9 L11.3 20.4 C11.1 21.4 9.8 21.5 9.4 20.6 Z";
 const HOT = { arrow:[5,3.5], ibeam:[12,12], ew:[12,12], ns:[12,12] };
 
-const MIN = 12, MAX = 24;
+const MIN = 10, MAX = 26;
 const rand = (a,b) => a + Math.random()*(b-a);
 const clamp = (v,a,b) => Math.max(a,Math.min(b,v));
-const easeInOut = t => t<0.5 ? 4*t*t*t : 1-Math.pow(-2*t+2,3)/2;
 
 function cursorSVG(shape, c){
   const st='stroke="#fff" stroke-width="1.5" stroke-linejoin="round"';
-  if(shape==="arrow"||shape==="dup"){
-    if(shape==="dup"){
-      return `<path d="${ARROW_D}" transform="translate(4 3.5)" fill="#fff" stroke="${c}" stroke-width="1.3" stroke-linejoin="round"/>`+
-        `<path d="${ARROW_D}" fill="${c}" ${st}/>`;
-    }
-    return `<path d="${ARROW_D}" fill="${c}" ${st}/>`;
+  if(shape==="dup"){
+    return `<path d="${ARROW_D}" transform="translate(4 3.5)" fill="#fff" stroke="${c}" stroke-width="1.3" stroke-linejoin="round"/>`+
+      `<path d="${ARROW_D}" fill="${c}" ${st}/>`;
   }
   if(shape==="ibeam"){
     const d="M8.5 4.5 H10.5 Q12 4.5 12 6 Q12 4.5 13.5 4.5 H15.5 M12 6 V18 M8.5 19.5 H10.5 Q12 19.5 12 18 Q12 19.5 13.5 19.5 H15.5";
@@ -245,7 +247,7 @@ function cursorSVG(shape, c){
   if(shape==="ew"||shape==="ns"){
     return `<path d="M2.5 12 L7 7.5 V10.4 H17 V7.5 L21.5 12 L17 16.5 V13.6 H7 V16.5 Z"${shape==="ns"?' transform="rotate(90 12 12)"':''} fill="${c}" ${st}/>`;
   }
-  return "";
+  return `<path d="${ARROW_D}" fill="${c}" ${st}/>`;
 }
 
 // ── DOM refs ──
@@ -255,255 +257,295 @@ const hudDots = document.getElementById('hud-dots');
 const hudStatus = document.getElementById('hud-status');
 const hudBar = document.getElementById('hud-bar');
 
-// ── Find text targets on page for cursors to "type" ──
-function getTargets(){
-  const els = document.querySelectorAll('h1, h2, h3, .f-card h3, .hero-sub, .stat-num, .stat-label, .section-sub, footer, .hero-badge, .btn');
-  const targets = [];
-  els.forEach(el=>{
-    const r = el.getBoundingClientRect();
-    if(r.width>20 && r.height>8 && r.top < document.documentElement.scrollHeight){
-      targets.push({
-        el, x: r.left + r.width/2, y: r.top + r.height/2,
-        text: el.textContent.trim().slice(0,60),
-        w: r.width, h: r.height
-      });
+// ══════════ Split every [data-swarm] text into per-character spans
+// (the swarm "types" each character into place) ══════════
+let allChans = []; // {span, el, text, done}
+function splitText(){
+  document.querySelectorAll('[data-swarm]').forEach(el=>{
+    const text = el.textContent;
+    el.textContent = "";
+    const marks = [];
+    for(const ch of text){
+      const s = document.createElement('span');
+      s.className = 'tw';
+      s.textContent = ch === '\n' ? ' ' : ch;
+      el.appendChild(s);
+      marks.push(s);
     }
+    const c = { el, marks, done: 0 };
+    allChans.push(c);
   });
-  return targets;
 }
+splitText();
 
-// ── Cursor class ──
+// ══════════ Cursor ══════════
 class Cursor {
   constructor(id){
     this.id = id;
-    this.x = rand(0, innerWidth);
-    this.y = rand(0, innerHeight);
+    // spawn off-screen edges, like swarm-cursors intro agents
+    const side = id % 2 === 0 ? 1 : -1;
+    this.x = side===1 ? -30 + rand(0,40) : innerWidth + 30 - rand(0,40);
+    this.y = rand(0.1,0.9) * innerHeight;
     this.name = NAMES[id % NAMES.length];
     this.color = COLORS[id % COLORS.length];
     this.shape = "arrow";
-    this.press = 0;
-    this.angle = 0;
     this.vx = 0; this.vy = 0;
-    this.speed = rand(120, 400);
-    this.force = rand(800, 2500);
-    this.spin = rand(0.5, 2.0);
-    this.curl = rand(-1,1);
-    this.orbit = rand(40, 120);
-    this.target = null;
-    this.badge = null;
-    this.following = false;
+    this.speed = Math.random() < 0.25 ? rand(900,1400) : rand(250,650);
+    this.force = Math.random() < 0.25 ? rand(3000,5000) : rand(600,1600);
+    this.spin = rand(0.6,2.2);
+    this.orbit = rand(60,160);
+    this.angle = rand(0,6.28);
+    this.task = null;      // channel being typed
+    this.idleFor = 0;
     this.leaving = false;
+    this.press = 0;
 
-    // Create DOM
     this.el = document.createElement('div');
     this.el.className = 'swarm-cursor';
     this.el.innerHTML = `<svg width="24" height="24" viewBox="0 0 24 24"></svg>`;
     this.svg = this.el.querySelector('svg');
-    this.svg.style.transformOrigin = `${HOT.arrow[0]}px ${HOT.arrow[1]}px`;
     this._shape = "";
 
     this.badgeEl = document.createElement('div');
     this.badgeEl.className = 'swarm-badge';
     this.badgeEl.style.display = 'none';
     this.badgeEl.style.background = this.color;
+    this.badgeEl.textContent = this.name;
 
     overlay.appendChild(this.el);
     overlay.appendChild(this.badgeEl);
   }
 
   setShape(s){
-    if(s !== this.shape){
-      this.shape = s;
-      this.svg.innerHTML = cursorSVG(s, this.color);
-      const [hx,hy] = HOT[s] || HOT.arrow;
-      this.svg.style.transformOrigin = `${hx}px ${hy}px`;
-    }
+    if(s === this.shape) return;
+    this.shape = s;
+    this.svg.innerHTML = cursorSVG(s, this.color);
+    this._shape = s;
   }
 
-  update(dt, targets, phase){
-    // Choose behavior based on phase
-    if(phase === "idle"){
-      // Random wander
-      this.vx += (rand(-1,1)*this.force) * dt;
-      this.vy += (rand(-1,1)*this.force) * dt;
-    } else if(phase === "build"){
-      // Move toward a target
-      const t = this.target || targets[Math.floor(Math.random()*targets.length)];
-      const dx = t.x - this.x, dy = t.y - this.y;
-      const dist = Math.hypot(dx,dy);
-      if(dist > 4){
-        this.vx += (dx/dist) * this.force * dt;
-        this.vy += (dy/dist) * this.force * dt;
-      }
-      // Vary shape while working
-      if(Math.random() < 0.03){
-        const shapes = ['arrow','ibeam','ew','ns'];
-        this.setShape(shapes[Math.floor(Math.random()*shapes.length)]);
-      }
-      // Show name badge near target
-      this.badge.textContent = this.name;
-      this.badgeEl.style.display = '';
-      this.badgeEl.style.left = (t.x - 20) + 'px';
-      this.badgeEl.style.top = (t.y + 8) + 'px';
-    } else if(phase === "flock"){
-      // Flocking: gentle orbit around viewport center
-      const cx = innerWidth/2, cy = innerHeight/2;
-      this.angle += this.spin * dt;
-      const tx = cx + Math.cos(this.angle + this.id*0.5) * this.orbit;
-      const ty = cy + Math.sin(this.angle + this.id*0.7) * this.orbit * 0.6;
-      this.vx += (tx - this.x) * 2 * dt;
-      this.vy += (ty - this.y) * 2 * dt;
-      this.badgeEl.style.display = 'none';
-    }
+  // move to a point with spring force
+  seek(tx, ty, dt, k){
+    this.vx += (tx - this.x) * k * dt;
+    this.vy += (ty - this.y) * k * dt;
+  }
 
-    // Damping
-    const damp = Math.exp(-dt * 2.5);
-    this.vx *= damp;
-    this.vy *= damp;
+  wander(dt){
+    this.vx += rand(-1,1) * this.force * 0.4 * dt;
+    this.vy += rand(-1,1) * this.force * 0.4 * dt;
+  }
 
-    // Clamp speed
-    const spd = Math.hypot(this.vx, this.vy);
-    if(spd > this.speed){
-      this.vx = this.vx/spd * this.speed;
-      this.vy = this.vy/spd * this.speed;
-    }
+  flock(dt, cx, cy){
+    this.angle += this.spin * dt;
+    const tx = cx + Math.cos(this.angle + this.id*0.618) * this.orbit;
+    const ty = cy + Math.sin(this.angle*0.8 + this.id*0.411) * this.orbit * 0.55;
+    this.seek(tx, ty, dt, 3);
+  }
 
+  step(dt, cx, cy, mode){
+    if(mode === "flock") this.flock(dt, cx, cy);
+    else if(mode === "idle") this.wander(dt);
+    // else: task-specific forces applied by engine before this step
+
+    const damp = Math.exp(-dt * 2.8);
+    this.vx *= damp; this.vy *= damp;
+    const spd = Math.hypot(this.vx,this.vy);
+    if(spd > this.speed){ this.vx = this.vx/spd*this.speed; this.vy = this.vy/spd*this.speed; }
     this.x += this.vx * dt;
     this.y += this.vy * dt;
 
-    // Keep in bounds (soft)
-    if(this.x < 20) this.vx += 50;
-    if(this.x > innerWidth-20) this.vx -= 50;
-    if(this.y < 20) this.vy += 50;
-    if(this.y > innerHeight-20) this.vy -= 50;
+    // soft bounds
+    if(this.x < 24) this.vx += 60;
+    if(this.x > innerWidth-24) this.vx -= 60;
+    if(this.y < 24) this.vy += 60;
+    if(this.y > innerHeight-24) this.vy -= 60;
 
-    // Render
-    this.el.style.transform = `translate(${Math.round(this.x)}px,${Math.round(this.y)}px)`;
+    this.press = Math.max(0, this.press - dt*5);
+    this.el.style.transform = `translate(${this.x|0}px,${this.y|0}px)`;
     const [hx,hy] = HOT[this.shape] || HOT.arrow;
-    const s = 1 - this.press * 0.12;
-    this.svg.style.transform = `translate(${-hx}px,${-hy}px) rotate(${Math.round(this.angle*10)}deg) scale(${s})`;
+    const s = 1 - this.press*0.12;
+    this.svg.style.transform = `translate(${-hx}px,${-hy}px) scale(${s})`;
   }
+
+  renderBadge(x, y){
+    this.badgeEl.style.display = '';
+    this.badgeEl.style.left = x + 'px';
+    this.badgeEl.style.top = y + 'px';
+  }
+  hideBadge(){ this.badgeEl.style.display = 'none'; }
 }
 
-// ── Engine ──
+// ══════════ Engine: cursors type text into place ══════════
 const cursors = [];
-for(let i=0;i<MIN;i++) cursors.push(new Cursor(i));
+for(let i=0;i<MIN;i++){ cursors.push(new Cursor(i)); addDot(cursors[i]); }
 
-let targets = [];
-let phase = 'idle';
-let phaseTime = 0;
-let lastTime = performance.now();
-
-// HUD dots
-cursors.forEach(c=>{
+function addDot(c){
   const d = document.createElement('i');
   d.style.background = c.color;
   d.textContent = c.name[0];
   hudDots.appendChild(d);
-});
-
-function refreshTargets(){
-  targets = getTargets();
 }
-refreshTargets();
-window.addEventListener('resize', refreshTargets, {passive:true});
-window.addEventListener('scroll', refreshTargets, {passive:true});
+function removeDot(){
+  const dots = hudDots.children;
+  if(dots.length > MIN) dots[dots.length-1].remove();
+}
 
-function updatePhase(dt){
-  phaseTime += dt;
-  if(phase === 'idle' && phaseTime > 3){
-    phase = 'build';
-    phaseTime = 0;
-    // Assign targets
-    cursors.forEach(c=>{
-      if(targets.length) c.target = targets[Math.floor(Math.random()*targets.length)];
-    });
-    hudStatus.textContent = `Building · ${cursors.length} agents`;
-  } else if(phase === 'build' && phaseTime > 8){
-    phase = 'flock';
-    phaseTime = 0;
-    cursors.forEach(c=>{ c.target = null; c.badgeEl.style.display='none'; });
-    hudStatus.textContent = `Swarm · ${cursors.length} agents`;
-  } else if(phase === 'flock' && phaseTime > 10){
-    phase = 'idle';
-    phaseTime = 0;
-    hudStatus.textContent = `Scanning page…`;
+let marks = [];       // active char marks: {span, x, y, done, cursor}
+let buildPhase = false;
+let lastTime = performance.now();
+
+// (Re)measure which characters need typing & where they sit.
+// Only characters in/near the viewport are work targets, like swarm-cursors
+// frontier system: off-screen content waits until the user scrolls.
+function refreshMarks(){
+  marks = [];
+  for(const c of allChans){
+    for(const m of c.marks){
+      if(m.classList.contains('show')) continue;
+      const r = m.getBoundingClientRect();
+      if(r.width < 1 || r.top > innerHeight + 40 || r.bottom < -40) continue;
+      marks.push({ span: m, x: r.left + r.width/2, y: r.top + r.height/2, done: false, cursor: null });
+    }
   }
-  // Progress bar
-  const total = 21; // 3+8+10
-  const prog = phase==='idle' ? (phaseTime/total)*100 :
-               phase==='build' ? (3+phaseTime/total)*100 :
-               (11+(phaseTime/total))*100;
-  hudBar.style.width = clamp(prog,0,100)+'%';
 }
 
-function spawnMore(){
-  const want = clamp(MIN + Math.floor(phaseTime*0.5), MIN, MAX);
+function assignTasks(){
+  // give each cursor the next undone mark, nearest to its current position
+  const open = marks.filter(m => !m.done && !m.cursor);
+  const free = cursors.filter(c => !c.leaving);
+  for(const c of free){
+    if(!open.length) break;
+    let best = null, bs = Infinity;
+    for(const m of open){
+      const d = Math.hypot(m.x - c.x, m.y - c.y);
+      if(d < bs){ bs = d; best = m; }
+    }
+    if(best && bs < innerWidth){
+      best.cursor = c;
+      c.task = best;
+      c.setShape("ibeam");
+    }
+  }
+}
+
+function finishMark(m, c){
+  m.span.classList.add('show');
+  m.done = true;
+  c.task = null;
+  c.setShape("arrow");
+  c.hideBadge();
+  c.press = 0.6;
+}
+
+function progress(){
+  let total = 0, done = 0;
+  for(const c of allChans){ total += c.marks.length; for(const m of c.marks) if(m.classList.contains('show')) done++; }
+  return total ? done/total*100 : 0;
+}
+
+// spawn / retire agents (swarm-cursors scales agent count with workload)
+function scaleSwarm(){
+  const open = marks.filter(m=>!m.done && !m.cursor).length;
+  const want = clamp(MIN + Math.floor(open/3), MIN, MAX);
   while(cursors.length < want){
     const c = new Cursor(cursors.length);
-    c.x = rand(0,innerWidth); c.y = -40;
-    cursors.push(c);
-    const d = document.createElement('i');
-    d.style.background = c.color;
-    d.textContent = c.name[0];
-    hudDots.appendChild(d);
+    c.x = c.id%2===0 ? -30 : innerWidth+30;
+    c.y = rand(0.15,0.85)*innerHeight;
+    cursors.push(c); addDot(c);
   }
-}
-
-function retire(){
-  const want = clamp(MIN + Math.floor(phaseTime*0.5), MIN, MAX);
-  while(cursors.length > want && cursors.length > MIN){
+  while(cursors.length > want){
     const c = cursors.pop();
-    c.el.remove();
-    c.badgeEl.remove();
-    const dots = hudDots.children;
-    if(dots.length > want) dots[dots.length-1].remove();
+    c.el.remove(); c.badgeEl.remove(); removeDot();
   }
 }
 
-// Animate
+let refreshAccum = 0;
 function tick(now){
   const dt = Math.min((now - lastTime)/1000, 0.05);
   lastTime = now;
 
-  updatePhase(dt);
-  spawnMore();
-  retire();
+  refreshAccum += dt;
+  if(refreshAccum > 0.25){ refreshAccum = 0; refreshMarks(); }
+
+  // when all visible text in current viewport is typed, start building off-screen content
+  const openHere = marks.filter(m=>!m.done).length;
+  const allInViewportDone = openHere === 0;
+
+  if(allInViewportDone && !buildPhase){
+    // reveal next viewport worth of characters (scroll ahead)
+    const next = allChans.find(c => c.marks.some(m => {
+      const r = m.getBoundingClientRect();
+      return !m.classList.contains('show');
+    }));
+    if(next){
+      const r = next.el.getBoundingClientRect();
+      if(r.top < innerHeight + 600) buildPhase = true;
+    }
+  }
+
+  // periodically re-measure target positions while typing (layout is static here,
+  // but scroll position changes targets)
+  assignTasks();
+  scaleSwarm();
+
+  const cx = innerWidth/2, cy = innerHeight/2;
 
   for(const c of cursors){
-    c.update(dt, targets, phase);
+    if(c.task){
+      const m = c.task;
+      // type when close enough
+      const dx = m.x - c.x, dy = m.y - c.y;
+      const dist = Math.hypot(dx,dy);
+      if(dist < 14){
+        finishMark(m, c);
+        // pick a new task shortly
+        c.idleFor = 0;
+        continue;
+      } else {
+        c.seek(m.x, m.y, dt, 14);
+        c.press = Math.max(c.press, 1 - dist/80);
+        c.renderBadge(m.x, m.y + 14);
+      }
+    } else {
+      // idle between tasks: small drift, then re-assign
+      c.idleFor += dt;
+      c.wander(dt);
+      c.hideBadge();
+    }
+    c.step(dt, cx, cy, c.task ? "task" : "idle");
+  }
+
+  // HUD
+  hudStatus.textContent = `Building · ${cursors.length} agents · ${progress().toFixed(0)}%`;
+  hudBar.style.width = progress() + '%';
+  if(progress() >= 99.5){
+    hudStatus.textContent = `Done · ${cursors.length} agents swarming`;
   }
 
   requestAnimationFrame(tick);
 }
 
-// Show HUD
-hud.classList.add('on');
-requestAnimationFrame(tick);
-
-// ── Scroll-triggered reveal: animate cards into view ──
+// ── Reveal below-the-fold text on scroll (characters become typable) ──
 const io = new IntersectionObserver((entries)=>{
   entries.forEach(e=>{
     if(e.isIntersecting){
-      e.target.style.opacity='1';
-      e.target.style.transform='translateY(0)';
-      // Re-measure targets when elements appear
-      setTimeout(refreshTargets, 100);
+      // characters in this element become typable; the swarm will come to them
+      refreshMarks();
     }
   });
-},{threshold:0.1});
+},{rootMargin:"200px 0px"});
+document.querySelectorAll('.f-card, .stat-num, .stat-label, .section-label, .section-sub, .cta, footer').forEach(el=>io.observe(el));
 
-document.querySelectorAll('.f-card, .stat-num, .hero-inner').forEach(el=>{
-  el.style.opacity='0';
-  el.style.transform='translateY(20px)';
-  el.style.transition='opacity .6s ease, transform .6s ease';
-  io.observe(el);
-});
+// initial HUD on + start
+refreshMarks();
+hud.classList.add('on');
+hudStatus.textContent = `Swarm assembling…`;
+setTimeout(()=>{ hud.classList.add('on'); }, 300);
+requestAnimationFrame(tick);
 
-// Stagger cards
-document.querySelectorAll('.f-card').forEach((el,i)=>{
-  el.style.transitionDelay = (i*0.08)+'s';
-});
+// Safety: if JS ever stalls, never leave text invisible — reveal all after 4s
+setTimeout(()=>{
+  for(const c of allChans) for(const m of c.marks) m.classList.add('show');
+}, 4000);
 
 })();
 </script>
